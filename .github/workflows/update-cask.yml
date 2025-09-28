@@ -47,24 +47,24 @@ jobs:
           echo "Updated cask formula:"
           head -10 Casks/timecatcher.rb
 
-      - name: Commit and push changes
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check for changes
+        id: changes
         run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-
           if git diff --quiet; then
-            echo "No changes to commit"
-            exit 0
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
           fi
 
-          git add Casks/timecatcher.rb
-          git commit -m "Update TimeCatcher to ${{ github.event.inputs.version }}"
-
-          # Configure git to use the token for authentication
-          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
-          git push
+      - name: Commit and push changes
+        if: steps.changes.outputs.has_changes == 'true'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Update TimeCatcher to ${{ github.event.inputs.version }}"
+          file_pattern: "Casks/timecatcher.rb"
+          commit_user_name: "GitHub Actions"
+          commit_user_email: "actions@github.com"
+          commit_author: "GitHub Actions <actions@github.com>"
 
       - name: Cleanup
         run: rm -f timecatcher.dmg
