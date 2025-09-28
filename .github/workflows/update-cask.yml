@@ -1,0 +1,65 @@
+name: Update Cask
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'New version (e.g., v0.25.2)'
+        required: true
+        type: string
+      download_url:
+        description: 'Download URL for the DMG'
+        required: true
+        type: string
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download DMG and calculate SHA256
+        id: download
+        run: |
+          echo "Downloading DMG from: ${{ github.event.inputs.download_url }}"
+          curl -L "${{ github.event.inputs.download_url }}" -o timecatcher.dmg
+          SHA256=$(shasum -a 256 timecatcher.dmg | cut -d' ' -f1)
+          echo "SHA256: $SHA256"
+          echo "sha256=$SHA256" >> $GITHUB_OUTPUT
+
+      - name: Update cask formula
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          # Remove 'v' prefix if present
+          VERSION_CLEAN=${VERSION#v}
+          SHA256="${{ steps.download.outputs.sha256 }}"
+
+          echo "Updating cask to version: $VERSION_CLEAN"
+          echo "Using SHA256: $SHA256"
+
+          # Update version and SHA256 in the cask formula
+          sed -i "s/version \".*\"/version \"$VERSION_CLEAN\"/" Casks/timecatcher.rb
+          sed -i "s/sha256 .*/sha256 \"$SHA256\"/" Casks/timecatcher.rb
+
+          echo "Updated cask formula:"
+          head -10 Casks/timecatcher.rb
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git add Casks/timecatcher.rb
+          git commit -m "Update TimeCatcher to ${{ github.event.inputs.version }}"
+          git push
+
+      - name: Cleanup
+        run: rm -f timecatcher.dmg
