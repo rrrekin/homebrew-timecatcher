@@ -16,10 +16,22 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
+      - name: Check PAT secret
+        run: |
+          if [ -z "${{ secrets.PAT }}" ]; then
+            echo "❌ PAT secret is not configured in this repository"
+            echo "Please add a repository secret named 'PAT' with a GitHub Personal Access Token"
+            echo "The token needs 'repo' and 'workflow' scopes"
+            echo "See: https://github.com/${{ github.repository }}/settings/secrets/actions"
+            exit 1
+          else
+            echo "✅ PAT secret is configured"
+          fi
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
 
       - name: Download DMG and calculate SHA256
         id: download
@@ -56,29 +68,17 @@ jobs:
             echo "has_changes=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Verify authentication
+      - name: Commit and push changes
         if: steps.changes.outputs.has_changes == 'true'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Verifying git authentication..."
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
 
-          # Test if we can access the repo with current credentials
-          git ls-remote origin > /dev/null && echo "✅ Authentication successful" || echo "❌ Authentication failed"
+          git add Casks/timecatcher.rb
+          git commit -m "Update TimeCatcher to ${{ github.event.inputs.version }}"
 
-      - name: Commit and push changes
-        if: steps.changes.outputs.has_changes == 'true'
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "Update TimeCatcher to ${{ github.event.inputs.version }}"
-          file_pattern: "Casks/timecatcher.rb"
-          commit_user_name: "GitHub Actions"
-          commit_user_email: "actions@github.com"
-          commit_author: "GitHub Actions <actions@github.com>"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # The token should already be configured from checkout, but let's be explicit
+          git push origin HEAD:${GITHUB_REF##*/}
 
       - name: Cleanup
         run: rm -f timecatcher.dmg
