@@ -14,6 +14,12 @@ cask "timecatcher" do
 
   app "TimeCatcher.app"
 
+  postflight do
+    system_command "/usr/bin/xattr",
+                   args: ["-dr", "com.apple.quarantine", "#{appdir}/TimeCatcher.app"],
+                   sudo: false
+  end
+
   zap trash: [
     "~/Library/Application Support/TimeCatcher",
     "~/Library/Preferences/eu.rrrekin.timecatcher.plist",
