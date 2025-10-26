@@ -1,6 +1,6 @@
 cask "timecatcher" do
-  version "0.31.0"
-  sha256 "8b1d50be9672b0ff4ed84898aaf679bdc4c7aba3c2448ba2afdf05decf1c36ea"
+  version "0.32.1"
+  sha256 "2e9d244d63958beaf89dce0eaf5cd2ddeff8a96d9cd7103d94e6eca8b7fbf345"
 
   url "https://github.com/rrrekin/TimeCatcher/releases/download/v#{version}/TimeCatcher-#{version}-mac-arm64.dmg"
   name "TimeCatcher"
